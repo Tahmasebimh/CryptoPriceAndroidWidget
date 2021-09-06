@@ -1,6 +1,6 @@
-package com.hossein.bitcoininusdwidget.api
+package com.hossein.cryptopricewidget.api
 
-import com.hossein.bitcoininusdwidget.BitcoinPriceModel
+import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import io.reactivex.Single
 import okhttp3.ResponseBody
 import retrofit2.http.GET
@@ -15,6 +15,5 @@ interface Api {
 
     @GET("ticker")
     fun getBitcoinPrice(
-
     ): Single<BitcoinPriceModel>
 }

@@ -1,12 +1,12 @@
-package com.hossein.bitcoininusdwidget.api
+package com.hossein.cryptopricewidget.api
 
-import com.hossein.bitcoininusdwidget.BitcoinPriceModel
+import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import okhttp3.ResponseBody
 
-class CommonSIgnals private constructor() {
+class CommonSignals private constructor() {
     private val api: Api = RetrofitClientInstance.getRetrofit().create(
         Api::class.java
     )
@@ -23,7 +23,7 @@ class CommonSIgnals private constructor() {
     }
 
     companion object {
-        val instance = CommonSIgnals()
+        val instance = CommonSignals()
     }
 
 }
