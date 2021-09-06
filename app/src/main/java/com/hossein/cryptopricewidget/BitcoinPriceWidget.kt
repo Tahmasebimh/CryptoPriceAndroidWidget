@@ -1,5 +1,6 @@
 package com.hossein.cryptopricewidget
 
+import android.app.PendingIntent
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.appwidget.AppWidgetManager
@@ -9,11 +10,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
+import com.hossein.cryptopricewidget.api.CommonSignals
+import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.service.UpdateJobService
 import java.util.*
 import java.util.concurrent.TimeUnit
-import com.hossein.cryptopricewidget.provider
 import com.hossein.cryptopricewidget.provider.StringProvider
+import io.reactivex.observers.DisposableSingleObserver
 
 
 /**
@@ -21,7 +24,11 @@ import com.hossein.cryptopricewidget.provider.StringProvider
  */
 class BitcoinPriceWidget : AppWidgetProvider() {
     private var jobId: Int = 0
+    val TAG = "BitcoinPriceWidget>>>"
 
+    companion object{
+        const val ACTION_UPDATE_MANUAL = "action.update.manual"
+    }
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -29,12 +36,14 @@ class BitcoinPriceWidget : AppWidgetProvider() {
     ) {
         // There may be multiple widgets active, so update all of them
         for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
+            updateAppWidget(context, appWidgetManager, appWidgetId, StringProvider.updating)
         }
     }
 
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
+        //Start job scheduler service to update widget data every 15 min
+        scheduleUpdate(context)
     }
 
     override fun onDisabled(context: Context) {
@@ -42,7 +51,8 @@ class BitcoinPriceWidget : AppWidgetProvider() {
         val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         scheduler.cancel(jobId)
     }
-    private fun schduleUpdate(context: Context) {
+
+    private fun scheduleUpdate(context: Context) {
         val componentName = ComponentName(context, UpdateJobService::class.java)
         jobId = Random().nextInt(100)
         val info = JobInfo.Builder(jobId, componentName)
@@ -50,16 +60,14 @@ class BitcoinPriceWidget : AppWidgetProvider() {
             .setPersisted(true)
             .build()
         val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-        val result = scheduler.schedule(info)
-        if (result == JobScheduler.RESULT_SUCCESS){
-        }else{
-        }
+        scheduler.schedule(info)
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
         super.onReceive(context, intent)
+        Log.d(TAG, "onReceive: " + intent?.action)
         if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE){
-            var price = if (intent.hasExtra(StringProvider.price)){
+            val price = if (intent.hasExtra(StringProvider.price)){
                 intent.getStringExtra(StringProvider.price)
             }else{
                 StringProvider.tryAgain
@@ -75,7 +83,32 @@ class BitcoinPriceWidget : AppWidgetProvider() {
                     price!!
                 )
             }
+        }else if(intent?.action == ACTION_UPDATE_MANUAL){
+            updateManual(context)
         }
+    }
+
+    private fun updateManual(context: Context?) {
+        val disposable = CommonSignals.instance.getBitcoinPrice().subscribeWith(object :
+            DisposableSingleObserver<BitcoinPriceModel>() {
+            override fun onSuccess(data: BitcoinPriceModel) {
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
+                val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+                for (appWidgetId in allWidgetIds) {
+                    updateAppWidget(
+                        context,
+                        appWidgetManager,
+                        appWidgetId,
+                        data.map["USD"]?.last.toString() + data.map["USD"]?.symbol
+                    )
+                }
+            }
+
+            override fun onError(e: Throwable) {
+            }
+
+        })
     }
 
 }
@@ -86,11 +119,13 @@ internal fun updateAppWidget(
     appWidgetId: Int,
     price: String
 ) {
-    val widgetText = context.getString(R.string.appwidget_text)
     // Construct the RemoteViews object
     val views = RemoteViews(context.packageName, R.layout.bitcoin_price_widget)
-    views.setTextViewText(R.id.textView, widgetText)
-
+    views.setTextViewText(R.id.textView, price)
+    val intent = Intent(context, BitcoinPriceWidget::class.java)
+    intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
+    val pi = PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    views.setOnClickPendingIntent(R.id.textView, pi)
     // Instruct the widget manager to update the widget
     appWidgetManager.updateAppWidget(appWidgetId, views)
 }
