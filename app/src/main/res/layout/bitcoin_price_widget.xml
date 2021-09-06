@@ -20,9 +20,9 @@
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TextView"
+        tools:text="TextView"
         android:layout_centerVertical="true"
         android:layout_toEndOf="@id/imgView"
         android:textColor="@color/white"
-        android:textSize="16dp"/>
+        android:textSize="18dp"/>
 </RelativeLayout>

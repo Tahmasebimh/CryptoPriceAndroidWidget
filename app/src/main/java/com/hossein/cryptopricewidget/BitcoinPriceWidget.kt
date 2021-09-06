@@ -136,7 +136,8 @@ internal fun updateAppWidget(
     intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
     val pi = PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     views.setOnClickPendingIntent(R.id.textView, pi)
-    views.setInt(R.id.mainLayout, "setBackgroundResource", R.drawable.backgorund_curve_shape);
+    views.setInt(R.id.mainLayout, "setBackgroundResource", R.drawable.backgorund_curve_shape)
+
     // Instruct the widget manager to update the widget
     appWidgetManager.updateAppWidget(appWidgetId, views)
 }
