@@ -153,7 +153,7 @@ fun getCurrentTime(): String {
     val dayInMonth =
         rightNow[Calendar.DAY_OF_MONTH]
     val month =
-        rightNow[Calendar.MONTH]
+        rightNow[Calendar.MONTH] + 1
     val hour =
         rightNow[Calendar.HOUR_OF_DAY] // return the hour in 24 hrs format (ranging from 0-23)
     val minute =
