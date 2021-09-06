@@ -5,6 +5,7 @@ import android.app.job.JobService
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.util.Log
 import com.hossein.cryptopricewidget.BitcoinPriceWidget
 import com.hossein.cryptopricewidget.api.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
@@ -13,7 +14,9 @@ import com.hossein.cryptopricewidget.util.pref.PrefManager
 import io.reactivex.observers.DisposableSingleObserver
 
 class UpdateJobService: JobService() {
+    val TAG = "UpdateJobService>>>"
     override fun onStartJob(p0: JobParameters?): Boolean {
+        Log.d(TAG, "onStartJob: ")
         val disposable = CommonSignals.instance.getBitcoinPrice().subscribeWith(object :
             DisposableSingleObserver<BitcoinPriceModel>() {
             override fun onSuccess(data: BitcoinPriceModel) {
@@ -39,6 +42,7 @@ class UpdateJobService: JobService() {
     }
 
     override fun onStopJob(p0: JobParameters?): Boolean {
+        Log.d(TAG, "onStopJob: ")
         return true
     }
 }

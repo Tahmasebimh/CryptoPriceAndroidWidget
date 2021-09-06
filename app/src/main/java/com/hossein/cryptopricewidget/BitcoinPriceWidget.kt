@@ -13,11 +13,11 @@ import android.widget.RemoteViews
 import com.hossein.cryptopricewidget.api.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.service.UpdateJobService
+import com.hossein.cryptopricewidget.util.pref.PrefManager
+import com.hossein.cryptopricewidget.util.provider.StringProvider
+import io.reactivex.observers.DisposableSingleObserver
 import java.util.*
 import java.util.concurrent.TimeUnit
-import com.hossein.cryptopricewidget.util.provider.StringProvider
-import com.hossein.cryptopricewidget.util.pref.PrefManager
-import io.reactivex.observers.DisposableSingleObserver
 
 
 /**
@@ -67,7 +67,12 @@ class BitcoinPriceWidget : AppWidgetProvider() {
             .setPersisted(true)
             .build()
         val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-        scheduler.schedule(info)
+        val result = scheduler.schedule(info)
+        if (result == JobScheduler.RESULT_SUCCESS){
+            Log.d(TAG, "scheduleUpdate: jobStartedSucess")
+        }else{
+            Log.d(TAG, "scheduleUpdate: job failed ")
+        }
     }
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -99,7 +104,6 @@ class BitcoinPriceWidget : AppWidgetProvider() {
         val disposable = CommonSignals.instance.getBitcoinPrice().subscribeWith(object :
             DisposableSingleObserver<BitcoinPriceModel>() {
             override fun onSuccess(data: BitcoinPriceModel) {
-                Log.d(TAG, "onSuccess: $data")
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
                 val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
@@ -132,12 +136,53 @@ internal fun updateAppWidget(
     // Construct the RemoteViews object
     val views = RemoteViews(context.packageName, R.layout.bitcoin_price_widget)
     views.setTextViewText(R.id.textView, price)
+    views.setTextViewText(R.id.txtUpdate, StringProvider.latesUpdateAt + getCurrentTime())
     val intent = Intent(context, BitcoinPriceWidget::class.java)
     intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
     val pi = PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-    views.setOnClickPendingIntent(R.id.textView, pi)
+    views.setOnClickPendingIntent(R.id.txtUpdate, pi)
     views.setInt(R.id.mainLayout, "setBackgroundResource", R.drawable.backgorund_curve_shape)
 
     // Instruct the widget manager to update the widget
     appWidgetManager.updateAppWidget(appWidgetId, views)
+}
+
+fun getCurrentTime(): String {
+    val rightNow = Calendar.getInstance()
+
+    val dayInMonth =
+        rightNow[Calendar.DAY_OF_MONTH]
+    val month =
+        rightNow[Calendar.MONTH]
+    val hour =
+        rightNow[Calendar.HOUR_OF_DAY] // return the hour in 24 hrs format (ranging from 0-23)
+    val minute =
+        rightNow[Calendar.MINUTE]
+
+    val formattedDay = if (dayInMonth < 10){
+        "0$dayInMonth"
+    }else{
+        dayInMonth
+    }
+    val formattedMonth = if (month < 10){
+        "0$month"
+    }else{
+        month
+    }
+
+    val formattedHour = if (hour < 10){
+        "0$hour"
+    }else{
+        hour
+    }
+
+    val formattedMinute = if (minute < 10){
+        "0$minute"
+    }else{
+        minute
+    }
+
+    return "$formattedDay/$formattedMonth $formattedHour:$formattedMinute"
+
+
 }

@@ -2,6 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mainLayout"
+    tools:background="@color/black"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="@dimen/widget_margin"
@@ -24,5 +25,15 @@
         android:layout_centerVertical="true"
         android:layout_toEndOf="@id/imgView"
         android:textColor="@color/white"
-        android:textSize="18dp"/>
+        android:textSize="22dp"/>
+
+    <TextView
+        android:id="@+id/txtUpdate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        tools:text="Test"
+        android:textColor="@color/white"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="16dp"/>
 </RelativeLayout>
