@@ -1,4 +1,4 @@
-package com.hossein.cryptopricewidget.provider
+package com.hossein.cryptopricewidget.util.provider
 
 object StringProvider {
 

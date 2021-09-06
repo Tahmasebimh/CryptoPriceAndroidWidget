@@ -8,7 +8,8 @@ import android.content.Intent
 import com.hossein.cryptopricewidget.BitcoinPriceWidget
 import com.hossein.cryptopricewidget.api.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
-import com.hossein.cryptopricewidget.provider.StringProvider
+import com.hossein.cryptopricewidget.util.provider.StringProvider
+import com.hossein.cryptopricewidget.util.pref.PrefManager
 import io.reactivex.observers.DisposableSingleObserver
 
 class UpdateJobService: JobService() {
@@ -25,8 +26,9 @@ class UpdateJobService: JobService() {
                     )
                 )
                 intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-                intent.putExtra(StringProvider.price, data.map["USD"]?.last.toString() + data.map["USD"]?.symbol)
+                intent.putExtra(StringProvider.price, data["USD"]?.last.toString() + " " + data["USD"]?.symbol)
                 sendBroadcast(intent)
+                PrefManager.savePrice(data["USD"]?.last.toString() + " " + data["USD"]?.symbol, this@UpdateJobService)
             }
 
             override fun onError(e: Throwable) {

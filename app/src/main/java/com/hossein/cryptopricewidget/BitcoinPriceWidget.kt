@@ -15,7 +15,8 @@ import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.service.UpdateJobService
 import java.util.*
 import java.util.concurrent.TimeUnit
-import com.hossein.cryptopricewidget.provider.StringProvider
+import com.hossein.cryptopricewidget.util.provider.StringProvider
+import com.hossein.cryptopricewidget.util.pref.PrefManager
 import io.reactivex.observers.DisposableSingleObserver
 
 
@@ -36,7 +37,13 @@ class BitcoinPriceWidget : AppWidgetProvider() {
     ) {
         // There may be multiple widgets active, so update all of them
         for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId, StringProvider.updating)
+            updateAppWidget(
+                context,
+                appWidgetManager,
+                appWidgetId,
+                if (PrefManager.getPrice(context).isNullOrEmpty()) StringProvider.updating else PrefManager.getPrice(context)!!
+            )
+            updateManual(context)
         }
     }
 
@@ -66,15 +73,15 @@ class BitcoinPriceWidget : AppWidgetProvider() {
     override fun onReceive(context: Context?, intent: Intent?) {
         super.onReceive(context, intent)
         Log.d(TAG, "onReceive: " + intent?.action)
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
+        val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
         if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE){
             val price = if (intent.hasExtra(StringProvider.price)){
                 intent.getStringExtra(StringProvider.price)
             }else{
-                StringProvider.tryAgain
+                StringProvider.updating
             }
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
-            val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
             for (appWidgetId in allWidgetIds) {
                 updateAppWidget(
                     context,
@@ -92,6 +99,7 @@ class BitcoinPriceWidget : AppWidgetProvider() {
         val disposable = CommonSignals.instance.getBitcoinPrice().subscribeWith(object :
             DisposableSingleObserver<BitcoinPriceModel>() {
             override fun onSuccess(data: BitcoinPriceModel) {
+                Log.d(TAG, "onSuccess: $data")
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
                 val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
@@ -100,12 +108,14 @@ class BitcoinPriceWidget : AppWidgetProvider() {
                         context,
                         appWidgetManager,
                         appWidgetId,
-                        data.map["USD"]?.last.toString() + data.map["USD"]?.symbol
+                        data["USD"]?.last.toString() + " " + data["USD"]?.symbol
                     )
                 }
+                PrefManager.savePrice(data["USD"]?.last.toString() + " " + data["USD"]?.symbol, context)
             }
 
             override fun onError(e: Throwable) {
+
             }
 
         })
@@ -126,6 +136,7 @@ internal fun updateAppWidget(
     intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
     val pi = PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     views.setOnClickPendingIntent(R.id.textView, pi)
+    views.setInt(R.id.mainLayout, "setBackgroundResource", R.drawable.backgorund_curve_shape);
     // Instruct the widget manager to update the widget
     appWidgetManager.updateAppWidget(appWidgetId, views)
 }

@@ -1,8 +1,6 @@
 package com.hossein.cryptopricewidget.model
 
-data class BitcoinPriceModel(
-    val map: HashMap<String, Currency>
-)
+class BitcoinPriceModel :HashMap<String, Currency>()
 
 data class Currency(
     val `15m`: Double,
