@@ -32,6 +32,7 @@ class UpdateJobService: JobService() {
                 intent.putExtra(StringProvider.price, data["USD"]?.last.toString() + " " + data["USD"]?.symbol)
                 sendBroadcast(intent)
                 PrefManager.savePrice(data["USD"]?.last.toString() + " " + data["USD"]?.symbol, this@UpdateJobService)
+                jobFinished(p0, true)
             }
 
             override fun onError(e: Throwable) {
