@@ -10,11 +10,13 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
+import androidx.work.*
 import com.hossein.cryptopricewidget.api.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.service.UpdateJobService
 import com.hossein.cryptopricewidget.util.pref.PrefManager
 import com.hossein.cryptopricewidget.util.provider.StringProvider
+import com.hossein.cryptopricewidget.workmanager.UpdateWidgetWorker
 import io.reactivex.observers.DisposableSingleObserver
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -50,20 +52,48 @@ class BitcoinPriceWidget : AppWidgetProvider() {
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
         //Start job scheduler service to update widget data every 15 min
-        scheduleUpdate(context)
+//        scheduleUpdate(context)
+        setupWorker(context)
+    }
+
+    private fun setupWorker(context: Context) {
+        Log.d(TAG, "setupWorker: setup Worker 0 ")
+        val updateRequest =
+            PeriodicWorkRequestBuilder<UpdateWidgetWorker>(
+                PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS,
+                PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS, TimeUnit.MICROSECONDS
+            ).setBackoffCriteria(
+                BackoffPolicy.LINEAR,
+                OneTimeWorkRequest.MIN_BACKOFF_MILLIS,
+                TimeUnit.MILLISECONDS
+            ).addTag(
+                StringProvider.workerTag
+            ).build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "updateWidget",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            updateRequest
+        )
+        Log.d(TAG, "setupWorker: setup Worker 1 ")
     }
 
     override fun onDisabled(context: Context) {
         // Enter relevant functionality for when the last widget is disabled
-        val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-        scheduler.cancel(jobId)
+
+        //cancel job scheduler
+
+//        val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+//        scheduler.cancel(jobId)
+
+        //cancel worker
+        WorkManager.getInstance(context).cancelAllWorkByTag(StringProvider.workerTag)
     }
 
     private fun scheduleUpdate(context: Context) {
         val componentName = ComponentName(context, UpdateJobService::class.java)
         jobId = Random().nextInt(100)
         val info = JobInfo.Builder(jobId, componentName)
-            .setPeriodic(TimeUnit.MINUTES.toMillis(15))
+            .setPeriodic(TimeUnit.MINUTES.toMillis(5))
             .setPersisted(true)
             .build()
         val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
@@ -116,6 +146,10 @@ class BitcoinPriceWidget : AppWidgetProvider() {
                     )
                 }
                 PrefManager.savePrice(data["USD"]?.last.toString() + " " + data["USD"]?.symbol, context)
+                PrefManager.addToDailyPriceList(
+                    context = context,
+                    value = data["USD"]!!.last
+                )
             }
 
             override fun onError(e: Throwable) {
