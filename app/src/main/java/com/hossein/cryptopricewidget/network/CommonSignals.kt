@@ -1,4 +1,4 @@
-package com.hossein.cryptopricewidget.api
+package com.hossein.cryptopricewidget.network
 
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import io.reactivex.Single

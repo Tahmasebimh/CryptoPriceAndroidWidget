@@ -11,7 +11,7 @@ import android.content.Intent
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.work.*
-import com.hossein.cryptopricewidget.api.CommonSignals
+import com.hossein.cryptopricewidget.network.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.service.UpdateJobService
 import com.hossein.cryptopricewidget.util.pref.PrefManager
@@ -29,9 +29,10 @@ class BitcoinPriceWidget : AppWidgetProvider() {
     private var jobId: Int = 0
     val TAG = "BitcoinPriceWidget>>>"
 
-    companion object{
+    companion object {
         const val ACTION_UPDATE_MANUAL = "action.update.manual"
     }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -43,7 +44,9 @@ class BitcoinPriceWidget : AppWidgetProvider() {
                 context,
                 appWidgetManager,
                 appWidgetId,
-                if (PrefManager.getPrice(context).isNullOrEmpty()) StringProvider.updating else PrefManager.getPrice(context)!!
+                if (PrefManager.getPrice(context)
+                        .isNullOrEmpty()
+                ) StringProvider.updating else PrefManager.getPrice(context)!!
             )
             updateManual(context)
         }
@@ -51,13 +54,42 @@ class BitcoinPriceWidget : AppWidgetProvider() {
 
     override fun onEnabled(context: Context) {
         // Enter relevant functionality for when the first widget is created
-        //Start job scheduler service to update widget data every 15 min
-//        scheduleUpdate(context)
+        //Setup worker
         setupWorker(context)
     }
 
+    override fun onDisabled(context: Context) {
+        // Enter relevant functionality for when the last widget is disabled
+        //cancel worker
+        WorkManager.getInstance(context).cancelAllWorkByTag(StringProvider.workerTag)
+    }
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        super.onReceive(context, intent)
+        Log.d(TAG, "onReceive: " + intent?.action)
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
+        val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+        if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
+            val price = if (intent.hasExtra(StringProvider.price)) {
+                intent.getStringExtra(StringProvider.price)
+            } else {
+                StringProvider.updating
+            }
+            for (appWidgetId in allWidgetIds) {
+                updateAppWidget(
+                    context,
+                    appWidgetManager,
+                    appWidgetId,
+                    price!!
+                )
+            }
+        } else if (intent?.action == ACTION_UPDATE_MANUAL) {
+            updateManual(context)
+        }
+    }
+
     private fun setupWorker(context: Context) {
-        Log.d(TAG, "setupWorker: setup Worker 0 ")
         val updateRequest =
             PeriodicWorkRequestBuilder<UpdateWidgetWorker>(
                 PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS,
@@ -74,19 +106,6 @@ class BitcoinPriceWidget : AppWidgetProvider() {
             ExistingPeriodicWorkPolicy.REPLACE,
             updateRequest
         )
-        Log.d(TAG, "setupWorker: setup Worker 1 ")
-    }
-
-    override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
-
-        //cancel job scheduler
-
-//        val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-//        scheduler.cancel(jobId)
-
-        //cancel worker
-        WorkManager.getInstance(context).cancelAllWorkByTag(StringProvider.workerTag)
     }
 
     private fun scheduleUpdate(context: Context) {
@@ -96,37 +115,12 @@ class BitcoinPriceWidget : AppWidgetProvider() {
             .setPeriodic(TimeUnit.MINUTES.toMillis(5))
             .setPersisted(true)
             .build()
-        val scheduler= context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+        val scheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         val result = scheduler.schedule(info)
-        if (result == JobScheduler.RESULT_SUCCESS){
+        if (result == JobScheduler.RESULT_SUCCESS) {
             Log.d(TAG, "scheduleUpdate: jobStartedSucess")
-        }else{
+        } else {
             Log.d(TAG, "scheduleUpdate: job failed ")
-        }
-    }
-
-    override fun onReceive(context: Context?, intent: Intent?) {
-        super.onReceive(context, intent)
-        Log.d(TAG, "onReceive: " + intent?.action)
-        val appWidgetManager = AppWidgetManager.getInstance(context)
-        val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
-        val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
-        if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE){
-            val price = if (intent.hasExtra(StringProvider.price)){
-                intent.getStringExtra(StringProvider.price)
-            }else{
-                StringProvider.updating
-            }
-            for (appWidgetId in allWidgetIds) {
-                updateAppWidget(
-                    context,
-                    appWidgetManager,
-                    appWidgetId,
-                    price!!
-                )
-            }
-        }else if(intent?.action == ACTION_UPDATE_MANUAL){
-            updateManual(context)
         }
     }
 
@@ -135,7 +129,8 @@ class BitcoinPriceWidget : AppWidgetProvider() {
             DisposableSingleObserver<BitcoinPriceModel>() {
             override fun onSuccess(data: BitcoinPriceModel) {
                 val appWidgetManager = AppWidgetManager.getInstance(context)
-                val thisWidget = ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
+                val thisWidget =
+                    ComponentName(context!!.applicationContext, BitcoinPriceWidget::class.java)
                 val allWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
                 for (appWidgetId in allWidgetIds) {
                     updateAppWidget(
@@ -145,7 +140,10 @@ class BitcoinPriceWidget : AppWidgetProvider() {
                         data["USD"]?.last.toString() + " " + data["USD"]?.symbol
                     )
                 }
-                PrefManager.savePrice(data["USD"]?.last.toString() + " " + data["USD"]?.symbol, context)
+                PrefManager.savePrice(
+                    data["USD"]?.last.toString() + " " + data["USD"]?.symbol,
+                    context
+                )
                 PrefManager.addToDailyPriceList(
                     context = context,
                     value = data["USD"]!!.last
@@ -173,7 +171,8 @@ internal fun updateAppWidget(
     views.setTextViewText(R.id.txtUpdate, StringProvider.latesUpdateAt + getCurrentTime())
     val intent = Intent(context, BitcoinPriceWidget::class.java)
     intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
-    val pi = PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    val pi =
+        PendingIntent.getBroadcast(context, appWidgetId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     views.setOnClickPendingIntent(R.id.txtUpdate, pi)
     views.setInt(R.id.mainLayout, "setBackgroundResource", R.drawable.backgorund_curve_shape)
 
@@ -193,26 +192,26 @@ fun getCurrentTime(): String {
     val minute =
         rightNow[Calendar.MINUTE]
 
-    val formattedDay = if (dayInMonth < 10){
+    val formattedDay = if (dayInMonth < 10) {
         "0$dayInMonth"
-    }else{
+    } else {
         dayInMonth
     }
-    val formattedMonth = if (month < 10){
+    val formattedMonth = if (month < 10) {
         "0$month"
-    }else{
+    } else {
         month
     }
 
-    val formattedHour = if (hour < 10){
+    val formattedHour = if (hour < 10) {
         "0$hour"
-    }else{
+    } else {
         hour
     }
 
-    val formattedMinute = if (minute < 10){
+    val formattedMinute = if (minute < 10) {
         "0$minute"
-    }else{
+    } else {
         minute
     }
 

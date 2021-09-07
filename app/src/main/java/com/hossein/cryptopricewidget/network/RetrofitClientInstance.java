@@ -1,4 +1,4 @@
-package com.hossein.cryptopricewidget.api;
+package com.hossein.cryptopricewidget.network;
 
 import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 

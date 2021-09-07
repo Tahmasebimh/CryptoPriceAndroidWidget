@@ -7,7 +7,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.util.Log
 import com.hossein.cryptopricewidget.BitcoinPriceWidget
-import com.hossein.cryptopricewidget.api.CommonSignals
+import com.hossein.cryptopricewidget.network.CommonSignals
 import com.hossein.cryptopricewidget.model.BitcoinPriceModel
 import com.hossein.cryptopricewidget.util.provider.StringProvider
 import com.hossein.cryptopricewidget.util.pref.PrefManager
