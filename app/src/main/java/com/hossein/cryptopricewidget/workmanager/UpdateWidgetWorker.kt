@@ -22,11 +22,9 @@ class UpdateWidgetWorker(val appContext: Context, workerParams: WorkerParameters
     Worker(appContext, workerParams) {
     val TAG = "UpdateWidgetWorker>>>"
     override fun doWork(): Result {
-        Log.d(TAG, "doWork: 000")
         val intent = Intent(appContext, BitcoinPriceWidget::class.java)
         intent.action = BitcoinPriceWidget.ACTION_UPDATE_MANUAL
         appContext.sendBroadcast(intent)
-        Log.d(TAG, "doWork: 111")
         return Result.success()
     }
 }
